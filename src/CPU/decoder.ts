@@ -17,7 +17,7 @@ function setupMainDecoder(c: CPU) {
     setBC, incBC, decBC, setDE, incDE, decDE, setHL, setpHL, incHL, decHL
   } = c
 
-  d.push(() => c.lCycles = 4)
+  d.push(() => c.NOP()) // 0
   d.push(() => (c.lCycles = 12, setBC(get16())))
   d.push(() => (c.lCycles = 8, write8(c.BC, c.A)))
   d.push(() => (c.lCycles = 8, incBC()))
@@ -35,7 +35,7 @@ function setupMainDecoder(c: CPU) {
   d.push(() => (c.lCycles = 4, RRCA()))
 
 
-  d.push(() => (c.lCycles = 4, STOP()))
+  d.push(() => STOP()) // 1
   d.push(() => (c.lCycles = 12, setDE(get16())))
   d.push(() => (c.lCycles = 8, write8(c.DE, c.A)))
   d.push(() => (c.lCycles = 8, incDE()))
@@ -53,7 +53,7 @@ function setupMainDecoder(c: CPU) {
   d.push(() => (c.lCycles = 4, RRA()))
 
 
-  d.push(() => JR(ZMask, true))
+  d.push(() => JR(ZMask, true)) // 2
   d.push(() => (c.lCycles = 12, setHL(get16())))
   d.push(() => (c.lCycles = 8, write8(incHL() - 1, c.A)))
   d.push(() => (c.lCycles = 8, incHL()))
@@ -71,7 +71,7 @@ function setupMainDecoder(c: CPU) {
   d.push(() => (c.lCycles = 4, CPL()))
 
 
-  d.push(() => JR(CMask, true))
+  d.push(() => JR(CMask, true)) // 3
   d.push(() => (c.lCycles = 12, setSP(get16())))
   d.push(() => (c.lCycles = 8, write8(decHL() + 1, c.A)))
   d.push(() => (c.lCycles = 8, incSP()))
@@ -107,7 +107,7 @@ function setupMainDecoder(c: CPU) {
   d.push(() => (c.lCycles = 4, CCF()))
 
 
-  d.push(() => (c.lCycles = 4, setB(c.B)))
+  d.push(() => (c.lCycles = 4, setB(c.B))) // 4
   d.push(() => (c.lCycles = 4, setB(c.C)))
   d.push(() => (c.lCycles = 4, setB(c.D)))
   d.push(() => (c.lCycles = 4, setB(c.E)))
@@ -125,7 +125,7 @@ function setupMainDecoder(c: CPU) {
   d.push(() => (c.lCycles = 4, setC(c.A)))
 
 
-  d.push(() => (c.lCycles = 4, setD(c.B)))
+  d.push(() => (c.lCycles = 4, setD(c.B))) // 5
   d.push(() => (c.lCycles = 4, setD(c.C)))
   d.push(() => (c.lCycles = 4, setD(c.D)))
   d.push(() => (c.lCycles = 4, setD(c.E)))
@@ -143,7 +143,7 @@ function setupMainDecoder(c: CPU) {
   d.push(() => (c.lCycles = 4, setE(c.A)))
 
 
-  d.push(() => (c.lCycles = 4, setH(c.B)))
+  d.push(() => (c.lCycles = 4, setH(c.B))) // 6
   d.push(() => (c.lCycles = 4, setH(c.C)))
   d.push(() => (c.lCycles = 4, setH(c.D)))
   d.push(() => (c.lCycles = 4, setH(c.E)))
@@ -161,13 +161,13 @@ function setupMainDecoder(c: CPU) {
   d.push(() => (c.lCycles = 4, setL(c.A)))
 
 
-  d.push(() => (c.lCycles = 8, setpHL(c.B)))
+  d.push(() => (c.lCycles = 8, setpHL(c.B))) // 7
   d.push(() => (c.lCycles = 8, setpHL(c.C)))
   d.push(() => (c.lCycles = 8, setpHL(c.D)))
   d.push(() => (c.lCycles = 8, setpHL(c.E)))
   d.push(() => (c.lCycles = 8, setpHL(c.H)))
   d.push(() => (c.lCycles = 8, setpHL(c.L)))
-  d.push(() => (c.lCycles = 4, HALT()))
+  d.push(() => HALT())
   d.push(() => (c.lCycles = 8, setpHL(c.A)))
   d.push(() => (c.lCycles = 4, setA(c.B)))
   d.push(() => (c.lCycles = 4, setA(c.C)))
@@ -179,7 +179,7 @@ function setupMainDecoder(c: CPU) {
   d.push(() => (c.lCycles = 4, setA(c.A)))
 
 
-  d.push(() => (c.lCycles = 4, ADDrA(c.B)))
+  d.push(() => (c.lCycles = 4, ADDrA(c.B))) // 8
   d.push(() => (c.lCycles = 4, ADDrA(c.C)))
   d.push(() => (c.lCycles = 4, ADDrA(c.D)))
   d.push(() => (c.lCycles = 4, ADDrA(c.E)))
@@ -197,7 +197,7 @@ function setupMainDecoder(c: CPU) {
   d.push(() => (c.lCycles = 4, ADC(c.A)))
 
 
-  d.push(() => (c.lCycles = 4, SUB(c.B)))
+  d.push(() => (c.lCycles = 4, SUB(c.B))) // 9
   d.push(() => (c.lCycles = 4, SUB(c.C)))
   d.push(() => (c.lCycles = 4, SUB(c.D)))
   d.push(() => (c.lCycles = 4, SUB(c.E)))
@@ -215,7 +215,7 @@ function setupMainDecoder(c: CPU) {
   d.push(() => (c.lCycles = 4, SBC(c.A)))
 
 
-  d.push(() => (c.lCycles = 4, AND(c.B)))
+  d.push(() => (c.lCycles = 4, AND(c.B))) // A
   d.push(() => (c.lCycles = 4, AND(c.C)))
   d.push(() => (c.lCycles = 4, AND(c.D)))
   d.push(() => (c.lCycles = 4, AND(c.E)))
@@ -233,7 +233,7 @@ function setupMainDecoder(c: CPU) {
   d.push(() => (c.lCycles = 4, XOR(c.A)))
 
 
-  d.push(() => (c.lCycles = 4, OR(c.B)))
+  d.push(() => (c.lCycles = 4, OR(c.B))) // B
   d.push(() => (c.lCycles = 4, OR(c.C)))
   d.push(() => (c.lCycles = 4, OR(c.D)))
   d.push(() => (c.lCycles = 4, OR(c.E)))
@@ -251,50 +251,50 @@ function setupMainDecoder(c: CPU) {
   d.push(() => (c.lCycles = 4, CP(c.A)))
 
 
-  d.push(() => (c.lCycles = 4, RET(ZMask, true)))
+  d.push(() => RET(ZMask, true)) // C
   d.push(() => (c.lCycles = 12, POP(setBC)))
-  d.push(() => (c.lCycles = 4, JP(get16(), ZMask, true)))
-  d.push(() => (c.lCycles = 16, JP(get16())))
-  d.push(() => (c.lCycles = 4, CALL(ZMask, true)))
+  d.push(() => JP(get16(), ZMask, true))
+  d.push(() => JP(get16()))
+  d.push(() => CALL(ZMask, true))
   d.push(() => (c.lCycles = 16, PUSH(c.BC)))
   d.push(() => (c.lCycles = 8, ADDrA(get8())))
-  d.push(() => (c.lCycles = 16, RST(0)))
-  d.push(() => (c.lCycles = 4, RET(ZMask)))
-  d.push(() => (c.lCycles = 16, RET()))
-  d.push(() => (c.lCycles = 4, JP(get16(), ZMask)))
+  d.push(() => RST(0))
+  d.push(() => RET(ZMask))
+  d.push(() => RET())
+  d.push(() => JP(get16(), ZMask))
   d.push(() => (c.lCycles = 4, step(true)))
-  d.push(() => (c.lCycles = 4, CALL(ZMask)))
-  d.push(() => (c.lCycles = 24, CALL()))
+  d.push(() => CALL(ZMask))
+  d.push(() => CALL())
   d.push(() => (c.lCycles = 8, ADC(get8())))
-  d.push(() => (c.lCycles = 16, RST(0x08)))
+  d.push(() => RST(0x08))
 
 
-  d.push(() => (c.lCycles = 4, RET(CMask, true)))
+  d.push(() => RET(CMask, true)) // D
   d.push(() => (c.lCycles = 12, POP(setDE)))
-  d.push(() => (c.lCycles = 4, JP(get16(), CMask, true)))
+  d.push(() => JP(get16(), CMask, true))
   d.push(() => { })
-  d.push(() => (c.lCycles = 4, CALL(CMask, true)))
+  d.push(() => CALL(CMask, true))
   d.push(() => (c.lCycles = 16, PUSH(c.DE)))
   d.push(() => (c.lCycles = 8, SUB(get8())))
-  d.push(() => (c.lCycles = 16, RST(0x10)))
-  d.push(() => (c.lCycles = 4, RET(CMask)))
-  d.push(() => (c.lCycles = 16, RETI()))
-  d.push(() => (c.lCycles = 4, JP(get16(), CMask)))
+  d.push(() => RST(0x10))
+  d.push(() => RET(CMask))
+  d.push(() => RETI())
+  d.push(() => JP(get16(), CMask))
   d.push(() => { })
-  d.push(() => (c.lCycles = 4, CALL(CMask)))
+  d.push(() => CALL(CMask))
   d.push(() => { })
   d.push(() => (c.lCycles = 8, SBC(get8())))
-  d.push(() => (c.lCycles = 16, RST(0x18)))
+  d.push(() => RST(0x18))
 
 
-  d.push(() => (c.lCycles = 12, write8(0xFF00 + get8(), c.A)))
+  d.push(() => (c.lCycles = 12, write8(0xFF00 + get8(), c.A))) // E
   d.push(() => (c.lCycles = 12, POP(setHL)))
   d.push(() => (c.lCycles = 8, write8(0xFF00 + c.C, c.A)))
   d.push(() => { })
   d.push(() => { })
   d.push(() => (c.lCycles = 16, PUSH(c.HL)))
   d.push(() => (c.lCycles = 8, AND(get8())))
-  d.push(() => (c.lCycles = 16, RST(0x20)))
+  d.push(() => RST(0x20))
   d.push(() => (c.lCycles = 16, ADD(c.SP, CPU.convertSignedNumber(get8()), setSP)))
   d.push(() => (JP(c.HL), c.lCycles = 4))
   d.push(() => (c.lCycles = 16, write8(get16(), c.A)))
@@ -302,25 +302,25 @@ function setupMainDecoder(c: CPU) {
   d.push(() => { })
   d.push(() => { })
   d.push(() => (c.lCycles = 8, XOR(get8())))
-  d.push(() => (c.lCycles = 16, RST(0x28)))
+  d.push(() => RST(0x28))
 
 
-  d.push(() => (c.lCycles = 12, setA(read8(0xFF00 + get8()))))
+  d.push(() => (c.lCycles = 12, setA(read8(0xFF00 + get8())))) // F
   d.push(() => (c.lCycles = 12, POP(setAF)))
   d.push(() => (c.lCycles = 8, setA(read8(0xFF00 + c.C))))
-  d.push(() => (c.lCycles = 4, DI()))
+  d.push(() => DI())
   d.push(() => { })
   d.push(() => (c.lCycles = 16, PUSH(c.AF)))
   d.push(() => (c.lCycles = 8, OR(get8())))
-  d.push(() => (c.lCycles = 16, RST(0x30)))
+  d.push(() => RST(0x30))
   d.push(() => (c.lCycles = 12, LDHLpSPe()))
   d.push(() => (c.lCycles = 8, setSP(c.HL)))
   d.push(() => (c.lCycles = 16, setA(read8(get16()))))
-  d.push(() => (c.lCycles = 4, EI()))
+  d.push(() => EI())
   d.push(() => { })
   d.push(() => { })
   d.push(() => (c.lCycles = 8, CP(get8())))
-  d.push(() => (c.lCycles = 16, RST(0x38)))
+  d.push(() => RST(0x38))
 }
 
 function setupCBDecoder(c: CPU) {

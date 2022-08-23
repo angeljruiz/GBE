@@ -1,4 +1,4 @@
-import { DIV_ADDR, DIV_FREQ, IE_ADDR, IF_ADDR, INTERRUPTS, LCDC_ADDR, LCDC_BITS, MASK, MISC_REGISTERS, STAT_ADDR, STAT_BITS, TIMER_FREQUENCIES } from '../constants'
+import { CLOCK_SPEED, IE_ADDR, IF_ADDR, INTERRUPTS, LCDC_ADDR, LCDC_BITS, MASK, MISC_REGISTERS, STAT_ADDR, STAT_BITS, TIMER_FREQUENCIES } from '../constants'
 import setup from "./setupALU"
 import Registers from './Registers';
 import Memory from './Memory';
@@ -9,11 +9,11 @@ export class ALU extends Registers {
   halted: boolean = false
   interrupts: 0 | 1 | 2 = 0
   memory: Memory = new Memory(this)
-  cycles: number = TIMER_FREQUENCIES[0]
+  cycles: number = CLOCK_SPEED / TIMER_FREQUENCIES[0]
 
   pHL: number
-  DIVTimer: number
   DIV: number
+  DIVCounter: number
   TAC: number
   TMA: number
   TIMA: number
@@ -27,7 +27,7 @@ export class ALU extends Registers {
     })
 
     Object.defineProperty(caller, 'interruptsEnabled', {
-      get: () => caller.interrupts === 2 ? true : false,
+      get: () => caller.interrupts,
       set: (value: boolean) => value ? caller.interrupts = 1 : caller.interrupts = 0
     })
 
@@ -90,6 +90,7 @@ export class ALU extends Registers {
 
   handleInterrupts = () => {
     if (!this.interruptsEnabled) return
+    this.interrupts = 2
 
     Object.keys(INTERRUPTS).forEach((interrupt: keyof typeof INTERRUPTS) => {
       let ieInterrupt = this[`ie${interrupt}`],
@@ -102,15 +103,30 @@ export class ALU extends Registers {
         this.SP -= 2
         this.memory.write16(this.SP, this.PC)
         this.PC = INTERRUPTS[interrupt]
+        this.halted = false
       }
     })
   }
 
   setpHL = (value: number) => this.memory.write8(this.HL, value)
-  DI = () => this.interrupts = 0
-  EI = () => this.interrupts = 1
-  STOP = () => (this.halted = true, this.DIV = 0)
-  HALT = () => this.halted = true
+  NOP = () => this.lCycles = 4
+  DI = () => {
+    this.interrupts = 0
+    this.lCycles = 4
+  }
+  EI = () => {
+    this.interrupts = 1
+    this.lCycles = 4
+  }
+  STOP = () => {
+    this.halted = true
+    this.DIV = 0
+    this.lCycles = 4
+  }
+  HALT = () => {
+    this.halted = true
+    this.lCycles = 4
+  }
   DAA = () => {
     let correction = 0
 
@@ -147,27 +163,36 @@ export class ALU extends Registers {
     this.PC += ALU.convertSignedNumber(value)
   }
   CALL = (mask: number = 0, negate: boolean = false) => {
+    this.lCycles = 12
     if (mask && !this.matchFlag(mask, negate)) return this.PC += 2
 
+    this.lCycles = 24
     this.SP -= 2
     this.memory.write16(this.SP, this.PC + 2)
     this.PC = this.memory.get16()
   }
   RET = (mask: number = 0, negate: boolean = false) => {
-    this.lCycles = mask === 0 ? 16 : 8
+    this.lCycles = mask ? 8 : 16
     if (mask && !this.matchFlag(mask, negate)) return
 
-    this.lCycles = 20
+    if (mask) this.lCycles = 20
     this.PC = this.memory.read16(this.SP)
     this.SP += 2
   }
-  RETI = () => { this.EI(); this.RET(); }
+  RETI = () => {
+    this.EI()
+    this.RET()
+  }
   RST = (value: number) => {
     this.SP -= 2
     this.memory.write16(this.SP, this.PC)
     this.PC = value & 0xF
+    this.lCycles = 16
   }
-  POP = (write: (value: number) => void) => { write(this.memory.read16(this.SP)); this.SP += 2 }
+  POP = (write: (value: number) => void) => {
+    write(this.memory.read16(this.SP))
+    this.SP += 2
+  }
   PUSH = (value: number) => {
     this.SP -= 2
     this.memory.write16(this.SP, value)

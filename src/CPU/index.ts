@@ -2,8 +2,7 @@ import { ALU } from './ALU'
 import Memory from './Memory'
 import ppu from './PPU'
 import setupDecoders from './decoder'
-import { DIV_ADDR, MASK, MAX_CYCLES, TIMER_FREQUENCIES } from '../constants'
-import { formatState } from '../utils'
+import {CLOCK_SPEED, DIV_ADDR, DIV_FREQ, MASK, MAX_CYCLES, TIMER_FREQUENCIES} from '../constants'
 
 export default class CPU extends ALU {
   PPU: ppu = new ppu()
@@ -12,11 +11,11 @@ export default class CPU extends ALU {
     super()
     setupDecoders(this)
 
-    this.memory.write8(DIV_ADDR, 0x18)
-    this.TAC = 0xF8
-    this.IF = 0xE1
-    this.OBP0 = 0xFF
-    this.OBP1 = 0xFF
+    // this.memory.write8(DIV_ADDR, 0x18)
+    // this.TAC = 0xF8
+    // this.IF = 0xE1
+    // this.OBP0 = 0xFF
+    // this.OBP1 = 0xFF
   }
 
   read8 = (addr: number): number => {
@@ -34,42 +33,47 @@ export default class CPU extends ALU {
     Memory.write8(this.memory.all, addr, data)
   }
 
-  updateDivider = () => {
-    this.memory.all[DIV_ADDR] = this.DIV++
+  updateDIV = () => {
+    this.DIVCounter += this.lCycles
+
+    if (this.DIVCounter >= CLOCK_SPEED / DIV_FREQ) {
+      this.DIVCounter = 0
+      this.memory.all[DIV_ADDR] = (this.memory.all[DIV_ADDR] + 1) & 0xFF
+    }
   }
 
   updateTimer = () => {
-    this.updateDivider()
     if (!(this.TAC & MASK.bit2)) return
 
     this.cycles -= this.lCycles
 
     if (this.cycles <= 0) {
-      this.cycles = TIMER_FREQUENCIES[this.TAC & 3]
+      this.cycles = CLOCK_SPEED / TIMER_FREQUENCIES[this.TAC & 3]
 
-      if (this.TIMA === 255) {
+      this.TIMA += 1
+
+      if (this.TIMA === 0) {
         this.TIMA = this.TMA
-        this.ifTimer = 1
-        this.handleInterrupts()
-      } else this.TIMA++
+        this.ifTimer = true
+      }
     }
   }
 
   step = (CB = false) => {
-    let cycles = 0
-
-    // while (cycles < MAX_CYCLES) {
-    CPU.step(this, CB)
-
-    cycles += this.lCycles
+    if (this.halted) {
+      this.NOP()
+    } else {
+      CPU.step(this, CB)
+    }
+    this.updateDIV()
     this.updateTimer()
-    // }
+    this.handleInterrupts()
   }
 
   execute = async () => {
     do {
       this.step()
-    } while (!this.halted && this.PC !== 0)
+    } while (this.PC !== 0 && this.PC !== this.stop)
   }
 
   static step(caller: CPU, CB: boolean = false) {
@@ -79,9 +83,5 @@ export default class CPU extends ALU {
     const func = CB ? caller.cb[opcode] : caller.decoder[opcode]
 
     func()
-    if (caller.interrupts === 1) {
-      caller.interrupts = 2
-      caller.handleInterrupts()
-    }
   }
 }

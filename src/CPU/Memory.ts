@@ -4,9 +4,9 @@ import { ALU } from './ALU'
 export default class Memory {
   static BIOS: Array<number> = BIOS
   all: Array<number> = new Array(2 ** 16).fill(0)
-  isInBIOS: boolean = true
   pHL: number
   cpu: ALU
+  stop: number
 
   constructor(registers: ALU) {
     this.cpu = registers
@@ -21,7 +21,7 @@ export default class Memory {
 
   static write8(memory: Array<number>, addr: number, data: number) {
     addr &= MASK.word
-    // if (addr === 0xFF02) console.log(String.fromCharCode(Memory.read8(memory, 0xFF01)))
+    if (addr === 0xFF02) console.log(String.fromCharCode(Memory.read8(memory, 0xFF01)))
     if (addr >= 0xE000 && addr < 0xFE00) addr -= 0x2000
     memory[addr] = data & MASK.byte
   }
@@ -46,6 +46,7 @@ export default class Memory {
       (binString as string).split('').forEach((value: string, index: number) => {
         const opcode = value.charCodeAt(0)
         this.write8(index, opcode)
+        this.stop = index + 1
       })
     }
   }

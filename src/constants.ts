@@ -39,6 +39,7 @@ export const HMask = MASK.bit5
 export const CMask = MASK.bit4
 
 export const MAX_CYCLES = 69905
+export const CLOCK_SPEED = 262144
 export const TIMER_FREQUENCIES = [4096, 262144, 65536, 16384]
 export const DIV_FREQ = 16384
 
