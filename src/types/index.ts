@@ -23,6 +23,9 @@ export type CPUTypes = number |
 export type FormattedState = {
   PC?: string,
   SP?: string,
+  TIMA?: number,
+  DIV?: number,
+  DIVCounter?: number,
   instruction?: {
     opcode?: string,
     nextOpcode?: string,

@@ -1,7 +1,7 @@
 import { CPUTypes } from "../types"
-import { REGISTERS, COMBINED_REGISTERS, FLAGS, MASK, SINGLE_REGISTERS } from "../constants"
+import { REGISTERS, COMBINED_REGISTERS, FLAGS, MASK } from "../constants"
 
-export default interface Registers { //dynamically generated
+export default interface Registers { // dynamically generated
   A: number, setA(arg: number): number, incA(): number, decA(): number
   B: number, setB(arg: number): number, incB(): number, decB(): number
   C: number, setC(arg: number): number, incC(): number, decC(): number
@@ -38,34 +38,6 @@ export default class Registers {
 
   static convertSignedNumber(value: number) { return (value & MASK.bit7) ? -((~value + 1) & MASK.byte) : value }
 
-  init() {
-    this.a = 0
-    this.b = 0
-    this.c = 0
-    this.d = 0
-    this.e = 0
-    this.f = 0
-    this.h = 0
-    this.l = 0
-    this.pc = 0
-    this.sp = 0
-    this.lCycles = 0
-  }
-
-  reset() {
-    this.a = 1
-    this.b = 0
-    this.c = 0x13
-    this.d = 0
-    this.e = 0xD8
-    this.f = 0xB0
-    this.h = 1
-    this.l = 0x4D
-    this.pc = 0x0
-    this.lCycles = 0
-    this.sp = 0xfffe
-  }
-
   checkCarry = (valueA: number, valueB: number, carry: boolean = false, negation: boolean = false, add16: boolean = false): { H: number, C: number } => {
     let result = negation ? valueA - valueB - (carry ? this.flagC : 0) : valueA + valueB + (carry ? this.flagC : 0)
     return {
@@ -86,8 +58,6 @@ export default class Registers {
   resetFlags = (value: number = 1) => { this.setZeroFlag(value); this.flagN = 0; this.flagH = 0; this.flagC = 0 }
 
   constructor() {
-    this.init()
-
     REGISTERS.forEach((register: string) => {
       if (register === 'pHL') return
       else if (register === 'rHL') register = 'HL'

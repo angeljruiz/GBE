@@ -1,29 +1,43 @@
-import { CLOCK_SPEED, IE_ADDR, IF_ADDR, INTERRUPTS, LCDC_ADDR, LCDC_BITS, MASK, MISC_REGISTERS, STAT_ADDR, STAT_BITS, TIMER_FREQUENCIES } from '../constants'
+import {
+  CLOCK_SPEED,
+  DIV_FREQ,
+  IE_ADDR,
+  IF_ADDR,
+  INTERRUPTS,
+  LCDC_ADDR,
+  LCDC_BITS,
+  MASK,
+  MISC_REGISTERS,
+  STAT_ADDR,
+  STAT_BITS,
+  TIMER_FREQUENCIES
+} from '../constants'
 import setup from "./setupALU"
-import Registers from './Registers';
 import Memory from './Memory';
 
-export class ALU extends Registers {
+export class ALU extends Memory {
   decoder: Array<() => void> = []
   cb: Array<() => void> = []
   halted: boolean = false
+  stopped: boolean = false
   interrupts: 0 | 1 | 2 = 0
-  memory: Memory = new Memory(this)
   cycles: number = CLOCK_SPEED / TIMER_FREQUENCIES[0]
 
   pHL: number
   DIV: number
-  DIVCounter: number
+  DIVCounter: number = CLOCK_SPEED / DIV_FREQ
   TAC: number
   TMA: number
   TIMA: number
+  IE: number
+  IF: number
 
   static addMiscRegisters(caller: ALU) {
-    const setValue = (addr: number, data: number, position: number) => data & 1 ? ALU.SET(position, caller.memory.read8(addr)) : ALU.RES(position, caller.memory.read8(addr))
+    const setValue = (addr: number, data: number, position: number) => data & 1 ? ALU.SET(position, caller.read8(addr)) : ALU.RES(position, caller.read8(addr))
 
     Object.defineProperty(caller, 'pHL', {
-      get: () => caller.memory.read8(caller.HL),
-      set: (value: number) => caller.memory.write8(caller.HL, value)
+      get: () => caller.read8(caller.HL),
+      set: (value: number) => caller.write8(caller.HL, value)
     })
 
     Object.defineProperty(caller, 'interruptsEnabled', {
@@ -31,9 +45,16 @@ export class ALU extends Registers {
       set: (value: boolean) => value ? caller.interrupts = 1 : caller.interrupts = 0
     })
 
-    Object.keys(INTERRUPTS).forEach((interrupt, index) => {
-      const setInterrupt = (addr: number, data: number) => caller.memory.write8(addr, setValue(addr, data, index))
-      const getInterrupt = (addr: number) => ((caller.memory.read8(addr) & (1 << index)) >> index) & 1
+    Object.keys(INTERRUPTS).forEach((interrupt: keyof typeof INTERRUPTS, index) => {
+      const setInterrupt = (addr: number, data: number) => {
+        caller.write8(addr, setValue(addr, data, index))
+
+        if (caller.IE & caller.IF) {
+          caller.halted = false
+          caller.handleInterrupts()
+        }
+      }
+      const getInterrupt = (addr: number) => ((caller.read8(addr) & (1 << index)) >> index) & 1
 
       Object.defineProperty(caller, `ie${interrupt}`, {
         get: () => getInterrupt(IE_ADDR),
@@ -46,8 +67,8 @@ export class ALU extends Registers {
     })
 
     LCDC_BITS.forEach((control, index) => {
-      const setControl = (data: number) => caller.memory.write8(LCDC_ADDR, setValue(LCDC_ADDR, data, index))
-      const getControl = (): number => ((caller.memory.read8(LCDC_ADDR) & (1 << index)) >> index) & 1
+      const setControl = (data: number) => caller.write8(LCDC_ADDR, setValue(LCDC_ADDR, data, index))
+      const getControl = (): number => ((caller.read8(LCDC_ADDR) & (1 << index)) >> index) & 1
 
       Object.defineProperty(caller, `lcdc${control}`, {
         get: getControl,
@@ -57,15 +78,15 @@ export class ALU extends Registers {
 
     STAT_BITS.forEach((status, index) => {
       const setControl = (data: number) => {
-        let value = ALU.RES(index + 1, caller.memory.read8(STAT_ADDR))
+        let value = ALU.RES(index + 1, caller.read8(STAT_ADDR))
         if (status === 'Mode') value = ALU.RES(0, value)
         data &= status === 'Mode' ? 3 : 1
 
-        caller.memory.write8(STAT_ADDR, value + (data << (status === 'Mode' ? 0 : (index + 1))))
+        caller.write8(STAT_ADDR, value + (data << (status === 'Mode' ? 0 : (index + 1))))
       }
       const getControl = (): number => {
         const shift = status === 'Mode' ? index : index + 1
-        return (caller.memory.read8(STAT_ADDR) & (status === 'Mode' ? 3 : (1 << shift))) >> shift
+        return (caller.read8(STAT_ADDR) & (status === 'Mode' ? 3 : (1 << shift))) >> shift
       }
 
       Object.defineProperty(caller, `stat${status}`, {
@@ -75,8 +96,8 @@ export class ALU extends Registers {
     })
     MISC_REGISTERS.forEach(register => {
       Object.defineProperty(caller, register.name, {
-        get: () => caller.memory.read8(register.address),
-        set: (value: number) => register.zero ? caller.memory.write8(register.address, 0) : caller.memory.write8(register.address, value % (register.max ? register.max : MASK.byte))
+        get: () => caller.read8(register.address),
+        set: (value: number) => caller.write8(register.address, value & (register.max ? register.max : MASK.byte))
       })
     })
   }
@@ -89,8 +110,8 @@ export class ALU extends Registers {
   }
 
   handleInterrupts = () => {
-    if (!this.interruptsEnabled) return
-    this.interrupts = 2
+    if (this.interrupts === 2) this.interrupts = 1
+    if (!this.interruptsEnabled || !(this.IE & this.IF)) return
 
     Object.keys(INTERRUPTS).forEach((interrupt: keyof typeof INTERRUPTS) => {
       let ieInterrupt = this[`ie${interrupt}`],
@@ -101,31 +122,35 @@ export class ALU extends Registers {
         this[`if${interrupt}`] = 0;
 
         this.SP -= 2
-        this.memory.write16(this.SP, this.PC)
+        this.cycles -= 20
+        this.write16(this.SP, this.PC)
         this.PC = INTERRUPTS[interrupt]
-        this.halted = false
       }
     })
   }
 
-  setpHL = (value: number) => this.memory.write8(this.HL, value)
+  setpHL = (value: number) => this.write8(this.HL, value)
   NOP = () => this.lCycles = 4
   DI = () => {
     this.interrupts = 0
     this.lCycles = 4
   }
   EI = () => {
-    this.interrupts = 1
+    this.interrupts = 2
     this.lCycles = 4
   }
   STOP = () => {
-    this.halted = true
+    this.stopped = true
     this.DIV = 0
     this.lCycles = 4
   }
   HALT = () => {
+    this.lCycles = 0
+    if (this.ieInterrupt && this.ifInterrupt) {
+      this.lCycles = 4
+      return this.PC -= 1
+    }
     this.halted = true
-    this.lCycles = 4
   }
   DAA = () => {
     let correction = 0
@@ -139,12 +164,14 @@ export class ALU extends Registers {
     this.A += this.flagN ? -correction : correction
     this.setZeroFlag(this.A)
     this.flagH = 0
+    this.lCycles = 4
   }
 
   SCF = () => {
     this.flagN = 0
     this.flagH = 0
     this.flagC = 1
+    this.lCycles = 4
   }
 
   JP = (value: number, mask: number = 0, negate: boolean = false) => {
@@ -158,7 +185,7 @@ export class ALU extends Registers {
     this.lCycles = 8
     if (mask && !this.matchFlag(mask, negate)) return this.PC += 1
 
-    const value = this.memory.get8()
+    const value = this.get8()
     this.lCycles = 12
     this.PC += ALU.convertSignedNumber(value)
   }
@@ -168,39 +195,54 @@ export class ALU extends Registers {
 
     this.lCycles = 24
     this.SP -= 2
-    this.memory.write16(this.SP, this.PC + 2)
-    this.PC = this.memory.get16()
+    this.write16(this.SP, this.PC + 2)
+    this.PC = this.get16()
   }
   RET = (mask: number = 0, negate: boolean = false) => {
     this.lCycles = mask ? 8 : 16
     if (mask && !this.matchFlag(mask, negate)) return
 
     if (mask) this.lCycles = 20
-    this.PC = this.memory.read16(this.SP)
+    this.PC = this.read16(this.SP)
     this.SP += 2
   }
   RETI = () => {
-    this.EI()
+    this.interrupts = 1
     this.RET()
   }
   RST = (value: number) => {
     this.SP -= 2
-    this.memory.write16(this.SP, this.PC)
+    this.write16(this.SP, this.PC)
     this.PC = value & 0xF
     this.lCycles = 16
   }
   POP = (write: (value: number) => void) => {
-    write(this.memory.read16(this.SP))
+    write(this.read16(this.SP))
     this.SP += 2
+    this.lCycles = 12
   }
   PUSH = (value: number) => {
     this.SP -= 2
-    this.memory.write16(this.SP, value)
+    this.write16(this.SP, value)
+    this.lCycles = 16
   }
 
-  AND = (value: number) => { this.A &= value; this.resetFlags(this.A); this.flagH = 1 }
-  OR = (value: number) => { this.A |= value; this.resetFlags(this.A) }
-  XOR = (value: number) => { this.A ^= value; this.resetFlags(this.A) }
+  AND = (value: number) => {
+    this.lCycles = 4
+    this.A &= value
+    this.resetFlags(this.A)
+    this.flagH = 1
+  }
+  OR = (value: number) => {
+    this.lCycles = 4
+    this.A |= value
+    this.resetFlags(this.A)
+  }
+  XOR = (value: number) => {
+    this.lCycles = 4
+    this.A ^= value
+    this.resetFlags(this.A)
+  }
 
   ADD = (valueB: number, valueA: number, write: (arg: number) => void, carry: boolean = false, add16: boolean = false) => {
     const result = valueA + valueB + (carry ? this.flagC : 0)
@@ -211,6 +253,7 @@ export class ALU extends Registers {
     this.setCarryFlags(valueA, valueB, carry, false, add16)
 
     write(result & MASK.word)
+    this.lCycles = 4
   }
   SUB = (value: number, carry: boolean = false) => {
     const result = this.A - value - (carry ? this.flagC : 0)
@@ -218,6 +261,7 @@ export class ALU extends Registers {
     this.flagN = 1
     this.setCarryFlags(this.A, value, carry, true)
     this.setA(result & MASK.word)
+    this.lCycles = 4
   }
 
   RLA = (carry: boolean = false) => {
@@ -225,12 +269,14 @@ export class ALU extends Registers {
     this.resetFlags(1)
     this.flagC = (this.A & MASK.bit7) >> 7
     this.A = ((this.A << 1) & MASK.word) + (carry ? (this.A & MASK.bit7) >> 7 : c)
+    this.lCycles = 4
   }
   RRA = (carry: boolean = false) => {
     const c = this.flagC
     this.resetFlags(1)
     this.flagC = this.A & MASK.bit0
     this.A = (this.A >> 1) + (carry ? (this.A & MASK.bit0) << 7 : c << 7)
+    this.lCycles = 4
   }
 
   RL = (value: number, write: (arg: number) => void, carry: boolean = false) => {
@@ -281,16 +327,19 @@ export class ALU extends Registers {
     this.setZeroFlag(result)
     this.flagN = 1
     this.setCarryFlags(this.A, value, false, true)
+    this.lCycles = 4
   }
   CPL = () => {
     this.A = 255 - this.A
     this.flagN = 1
     this.flagH = 1
+    this.lCycles = 4
   }
   CCF = () => {
     this.flagN = 0
     this.flagH = 0
     this.flagC = 1 - this.flagC
+    this.lCycles = 4
   }
   BIT = (shift: number, register: number) => {
     const result = Number(!((register & (1 << shift)) >> shift))
@@ -300,10 +349,11 @@ export class ALU extends Registers {
   }
 
   LDHLpSPe = () => {
-    const secondVal = ALU.convertSignedNumber(this.memory.get8())
+    const secondVal = ALU.convertSignedNumber(this.get8())
 
     this.HL = this.SP + secondVal
     this.resetFlags()
     this.setCarryFlags(this.SP, secondVal)
+    this.lCycles = 12
   }
 }

@@ -13,6 +13,6 @@ declare global {
 window.c = cpu
 
 function handleUpload() {
-  cpu.memory.loadROM(selectedFile.files[0])
+  cpu.loadROM(selectedFile.files[0])
 }
 

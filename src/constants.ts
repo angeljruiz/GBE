@@ -27,7 +27,6 @@ export const MASK = {
   bit5: 1 << 5, //32 H 
   bit6: 1 << 6, //64 N
   bit7: 1 << 7, //128 Z
-  bit8: 1 << 8,
   nibble: 0xF,
   byte: 0xFF,
   word: 0xFFFF
@@ -39,7 +38,7 @@ export const HMask = MASK.bit5
 export const CMask = MASK.bit4
 
 export const MAX_CYCLES = 69905
-export const CLOCK_SPEED = 262144
+export const CLOCK_SPEED = 4194304
 export const TIMER_FREQUENCIES = [4096, 262144, 65536, 16384]
 export const DIV_FREQ = 16384
 
@@ -65,7 +64,6 @@ export const MISC_REGISTERS = [
   {
     name: 'DIV',
     address: DIV_ADDR,
-    zero: true
   },
   {
     name: 'TIMA',
@@ -116,6 +114,14 @@ export const MISC_REGISTERS = [
   {
     name: 'WX',
     address: 0xFF4B,
+  },
+  {
+    name: 'IE',
+    address: IE_ADDR,
+  },
+  {
+    name: 'IF',
+    address: IF_ADDR,
   }
 ]
 
