@@ -39,7 +39,7 @@ export const CMask = MASK.bit4
 
 export const MAX_CYCLES = 69905
 export const CLOCK_SPEED = 4194304
-export const TIMER_FREQUENCIES = [4096, 262144, 65536, 16384]
+export const TIMER_FREQUENCIES = [1024, 16, 64, 256]
 export const DIV_FREQ = 16384
 
 export const INTERRUPTS = { VBlank: 0x40, LCDSTAT: 0x48, Timer: 0x50, Serial: 0x58, Joypad: 0x60 }
@@ -60,6 +60,7 @@ export const STAT_ADDR = 0xFF41
 export const STAT_BITS = ['Mode', 'LYCLY', 'HBlankEnable', 'VBlankEnable', 'OAMEnable', 'LYCLYEnable']
 
 export const DIV_ADDR = 0xFF04
+export const TAC_ADDR = 0xFF07
 export const MISC_REGISTERS = [
   {
     name: 'DIV',
@@ -75,7 +76,7 @@ export const MISC_REGISTERS = [
   },
   {
     name: 'TAC',
-    address: 0xFF07,
+    address: TAC_ADDR,
   },
   {
     name: 'SCY',

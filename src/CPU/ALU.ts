@@ -1,13 +1,11 @@
 import {
   CLOCK_SPEED,
-  DIV_FREQ,
   IE_ADDR,
   IF_ADDR,
   INTERRUPTS,
   LCDC_ADDR,
   LCDC_BITS,
   MASK,
-  MISC_REGISTERS,
   STAT_ADDR,
   STAT_BITS,
   TIMER_FREQUENCIES
@@ -21,16 +19,7 @@ export class ALU extends Memory {
   halted: boolean = false
   stopped: boolean = false
   interrupts: 0 | 1 | 2 = 0
-  cycles: number = CLOCK_SPEED / TIMER_FREQUENCIES[0]
-
-  pHL: number
-  DIV: number
-  DIVCounter: number = CLOCK_SPEED / DIV_FREQ
-  TAC: number
-  TMA: number
-  TIMA: number
-  IE: number
-  IF: number
+  cycles: number = TIMER_FREQUENCIES[0]
 
   static addMiscRegisters(caller: ALU) {
     const setValue = (addr: number, data: number, position: number) => data & 1 ? ALU.SET(position, caller.read8(addr)) : ALU.RES(position, caller.read8(addr))
@@ -92,12 +81,6 @@ export class ALU extends Memory {
       Object.defineProperty(caller, `stat${status}`, {
         get: getControl,
         set: setControl
-      })
-    })
-    MISC_REGISTERS.forEach(register => {
-      Object.defineProperty(caller, register.name, {
-        get: () => caller.read8(register.address),
-        set: (value: number) => caller.write8(register.address, value & (register.max ? register.max : MASK.byte))
       })
     })
   }

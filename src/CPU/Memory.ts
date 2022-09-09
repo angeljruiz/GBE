@@ -1,10 +1,37 @@
 import Registers from "./Registers";
-import { BIOS, DIV_ADDR, MASK } from "../constants"
-
+import {
+    BIOS,
+    CLOCK_SPEED,
+    DIV_FREQ,
+    DIV_ADDR,
+    MASK,
+    MISC_REGISTERS,
+    TAC_ADDR,
+} from '../constants'
 
 export default class Memory extends Registers {
     static BIOS: Array<number> = BIOS
     memory: Array<number> = new Array(2 ** 16).fill(0)
+
+    pHL: number
+    DIV: number
+    DIVCounter: number = CLOCK_SPEED / DIV_FREQ
+    TAC: number
+    TMA: number
+    TIMA: number
+    IE: number
+    IF: number
+
+    constructor() {
+        super();
+
+        MISC_REGISTERS.forEach(register => {
+            Object.defineProperty(this, register.name, {
+                get: () => this.read8(register.address),
+                set: (value: number) => this.write8(register.address, value & (register.max ? register.max : MASK.byte))
+            })
+        })
+    }
 
     read8 = (addr: number): number => {
         addr &= MASK.word
@@ -22,7 +49,13 @@ export default class Memory extends Registers {
 
         if (addr === 0xFF02) console.log(String.fromCharCode(this.read8(0xFF01)))
         if (addr >= 0xE000 && addr < 0xFE00) addr -= 0x2000
-        if (addr === DIV_ADDR) data = 0;
+        if (addr === DIV_ADDR) {
+            data = 0
+
+            if (this.DIV === 1 && this.TAC & MASK.bit2) this.TIMA++
+        }
+
+        if (addr === TAC_ADDR && data === 0 && this.TAC === 0x5) this.TIMA++
 
         this.memory[addr] = data & MASK.byte
     }

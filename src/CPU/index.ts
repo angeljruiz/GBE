@@ -1,8 +1,13 @@
 import { ALU } from './ALU'
 import ppu from './PPU'
 import setupDecoders from './decoder'
-import { CLOCK_SPEED, DIV_FREQ, MASK, TIMER_FREQUENCIES } from '../constants'
-import { formatState } from "../utils";
+import {
+  CLOCK_SPEED,
+  DIV_ADDR,
+  DIV_FREQ,
+  MASK,
+  TIMER_FREQUENCIES,
+} from '../constants'
 
 export default class CPU extends ALU {
   PPU: ppu = new ppu()
@@ -17,7 +22,9 @@ export default class CPU extends ALU {
 
     while (this.DIVCounter <= 0) {
       this.DIVCounter += CLOCK_SPEED / DIV_FREQ
-      this.DIV++
+      this.memory[DIV_ADDR]++
+
+      if (this.DIV === 0) this.flagC = 1
     }
 
     if (!(this.TAC & MASK.bit2)) return
@@ -25,7 +32,7 @@ export default class CPU extends ALU {
     this.cycles -= this.lCycles
 
     while (this.cycles <= 0) {
-      this.cycles += CLOCK_SPEED / TIMER_FREQUENCIES[this.TAC & 3]
+      this.cycles += TIMER_FREQUENCIES[this.TAC & 3]
 
       this.TIMA += 1
 
